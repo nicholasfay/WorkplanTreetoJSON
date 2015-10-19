@@ -1,5 +1,5 @@
 ﻿/* $RCSfile: StepNCtoJSON.cs $
- * $Revision: 1.0 $ $Date: 2015/10/13 16:22:59 $
+ * $Revision: 1.1 $ $Date: 2015/10/19 15:54:59 $
  * Auth: Nicholas Fay (fayn@rpi.edu)
  * 
  * 	Copyright (c) 1991-2015 by STEP Tools Inc.
@@ -24,9 +24,8 @@ using System.Runtime.InteropServices;
 using System.IO;
 
 /*Command Line argument checks for: 
-    arg[0]: (true if wants separate file, false if wants to use command line(work in progress)
-    arg[1]: (Input .stpnc file name to be used by the program) Must be in same directory as cs file
-    arg[2]: (Output file path that ends in specificed text file name e.g. "C:test\test.txt"
+    arg[0]: (Input .stpnc file name to be used by the program) Must be in same directory as cs file (MANDATORY)
+    arg[1]: Output file to be created or populated with file path included e.g. "C:\test\test.txt"
 */
 namespace JSON
 {
@@ -35,16 +34,20 @@ namespace JSON
     {
         static void Main(string[] args)
         {
-            string b = args[0]; //See if the user wants a separate file or not (true = separate, false = console(Not fully implemented))
+            if(args.Length < 1)
+            {
+                Console.WriteLine("Must have atleast input file for program");
+                Environment.Exit(1);
+            }
+            // Create a trivial STEP-NC file
+            STEPNCLib.Finder Find = new STEPNCLib.Finder();
             bool test;
-            if (b == "true")
+            string file = args[0];
+            string out_dirFile = args[1];
+            if (out_dirFile != "")
                 test = true;
             else
                 test = false;
-
-            // Create a trivial STEP-NC file
-            STEPNCLib.Finder Find = new STEPNCLib.Finder();
-            string file = args[1];
 
             Find.Open238(file);
 
@@ -57,17 +60,19 @@ namespace JSON
             long last2 = 0; //Counter to be used in order to check whether or not element is last element in children array
             stepThrough(Find, wp_id, test, builder, depth, last, ref last2);
 
-            if (test)
+            if (test) //If user wants output file
             {
                 string output = builder.ToString();
-                string out_dirFile = args[2];
-                using (StreamWriter out_file =
+                if (!Directory.Exists(out_dirFile)) //See if the path exists
+                    Directory.CreateDirectory(Path.GetDirectoryName(out_dirFile)); //Create if not
+
+               using (StreamWriter out_file = //StreamWrite output to file
                     new StreamWriter(File.Open(out_dirFile, FileMode.Create)))
                 {
                     out_file.WriteLine(output);
                 }
             }
-            else
+            else //Otherwise Write to command line
             {
                 Console.WriteLine(builder.ToString());
                 Console.ReadLine();
