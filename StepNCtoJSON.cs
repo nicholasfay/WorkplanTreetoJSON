@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.IO;
+using STEPNCLib;
 
 /*Command Line argument checks for: 
     arg[0]: (Input .stpnc file name to be used by the program) Must be in same directory as cs file (MANDATORY)
@@ -40,7 +41,7 @@ namespace JSON
                 Environment.Exit(1);
             }
             // Create a trivial STEP-NC file
-            STEPNCLib.Finder Find = new STEPNCLib.Finder();
+            Finder Find = new Finder();
             bool test;
             string file = args[0];
             string out_dirFile = args[1];
@@ -59,6 +60,7 @@ namespace JSON
             bool last = false; //Boolean to check whether or not its the last element to remove repeating characters
             long last2 = 0; //Counter to be used in order to check whether or not element is last element in children array
             stepThrough(Find, wp_id, test, builder, depth, last, ref last2);
+            Console.ReadLine();
 
             if (test) //If user wants output file
             {
@@ -79,7 +81,65 @@ namespace JSON
             }
         }
 
-        static void stepThrough(STEPNCLib.Finder Find, long wp_id, bool file, StringBuilder builder, int depth, bool last, ref long count)
+        static void decode_process(Finder f, StringBuilder builder, long path_id)
+        {
+            double fe, s;
+            bool is_rap, co_on;
+
+            f.GetPathProcess(path_id, out fe, out s, out is_rap, out co_on);
+
+            Console.WriteLine("Feed = {0}, Speed = {1}\n", fe, s);
+        }
+
+        static void decode_axis(Finder f, StringBuilder builder, long path_id, long count)
+        {
+            for (int I = 0; I < count; I++)
+            {
+                long cve_id = f.GetPathAxisNext(path_id, I);
+                long count2 = f.GetPathPolylinePointCount(cve_id);
+
+                for (int J = 0; J < count2; J++)
+                {
+                    double ai, aj, ak;
+                    f.GetPathPolylinePointNext(cve_id, J, out ai, out aj, out ak);
+                    Console.WriteLine("\t({0}, {1}, {2})\n", ai, aj, ak);
+                }
+
+            }
+        }
+
+        static void decode_geometry(Finder f, StringBuilder builder, long path_id, long count)
+        {
+            for (int I = 0; I < count; I++)
+            {
+                bool isArc;
+                long cve_id = f.GetPathCurveNext(path_id, I, out isArc);
+                string type = f.GetPathCurveType(cve_id);
+
+                Console.WriteLine("Curve type is {0}\n", type);
+            }
+        }
+
+        static void decode_workingstep(Finder f, long path_id, StringBuilder builder)
+        {
+            long count1 = f.GetPathCurveCount(path_id);
+            long count2 = f.GetPathAxisCount(path_id);
+
+            if (count2 != 0 && count1 != count2)
+            {
+                Console.WriteLine("Error: Bad parameterization\n");
+                return;
+            }
+
+            decode_geometry(f, builder, path_id, count1);
+
+            if (count2 != 0)
+                decode_axis(f, builder, path_id, count2);
+
+            decode_process(f, builder, path_id);
+        }
+
+        static void stepThrough(Finder Find, long wp_id, bool file, StringBuilder builder, int depth, bool last, ref long count)
         {
             if (Find.IsWorkingstep(wp_id)) //Can add NC function functionality to here if needed
             {
@@ -114,6 +174,12 @@ namespace JSON
                 }
                 else
                     builder.Append(" }},\n");
+                for(int i = 0; i < Find.GetWorkingstepPathCount(wp_id); i++)
+                {
+                    bool contact;
+                    long toolpath = Find.GetWorkingstepPathNext(wp_id, i, out contact);
+                    decode_workingstep(Find, toolpath, builder);
+                }
             }
             else //Recursive call for Selectives and Workplans
             {
