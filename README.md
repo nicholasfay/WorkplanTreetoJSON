@@ -1,3 +1,3 @@
 # WorkplanTreetoJSON
 Creates JSON from Workplan Executable tree within STEP-NC with the following format:
-![]({{site.baseurl}}//workplanTree.PNG)
+[Format](http://postimg.org/image/gkp057rnx/87b65253/)
