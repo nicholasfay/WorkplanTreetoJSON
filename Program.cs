@@ -15,12 +15,11 @@ namespace Set_UUIDs_for_objects
 	    STEPNCLib.AptStepMaker APT = new STEPNCLib.AptStepMaker();
         StringBuilder builder = new StringBuilder();
         String out_dirFile = args[0];
-//	    APT.Open238("new_hardmoldy.stpnc");
-//	    Find.Open238("new_hardmoldy.stpnc");
-//	    APT.Open238("hardmoldy_IMTS_signed.stpnc");
-//	    Find.Open238("hardmoldy_IMTS_signed.stpnc");
-        APT.Open238("v14_IMTS_HARDMOLDY.stpnc");
-        Find.Open238("v14_IMTS_HARDMOLDY.stpnc");
+        String input_file = args[1];
+
+        APT.Open238(input_file);
+        Find.Open238(input_file);
+
 	    long wp_id = Find.GetMainWorkplan();
         int depth = 0;
         bool last = false;
@@ -44,7 +43,7 @@ namespace Set_UUIDs_for_objects
         {
             out_file.WriteLine(output);
         }
-        Console.ReadLine();
+        //Console.ReadLine();
     }
 
     //Marks a Workplan or Selective with attributes: ["name" (if available), "base_time", "opt_time" (if available), "distance", "children"] 
@@ -88,7 +87,6 @@ namespace Set_UUIDs_for_objects
         }
         else if (Find.IsSelective(wp_id))
         {
-            Console.WriteLine("I MADE IT INSIDE SELECTIVE");
             if (count != 0)
             {
                 builder.Append(",\n");
@@ -124,7 +122,6 @@ namespace Set_UUIDs_for_objects
         }
         else {
             Console.WriteLine("ERROR IN STEPNC FILE");
-
         }
         for (int I = 0; I < size; I++)
         {
@@ -132,7 +129,6 @@ namespace Set_UUIDs_for_objects
             String uu = APT.SetUUID_if_not_set(exe_id);
 
             String type = Find.GetExecutableType(exe_id);
-            Console.WriteLine("This id has type: " + type);
             //System.Console.WriteLine("Item at " + I + " is a " + type + " has UUID: " + uu);
             if (I == (size - 1))
                 last = true;
@@ -177,44 +173,67 @@ namespace Set_UUIDs_for_objects
         }
         builder.Append("\"distance\": ");
         builder.Append(distance);
+        builder.Append(", ");
+
+        List<long> paths = Find.GetWorkingstepPathAll(ws_id);
+        builder.Append("\"toolpaths\" : [\n");
+        bool last2 = false;
+	    for(int i = 0; i < paths.Count; i++){
+            long tp_id = paths[i];
+            if(i == (paths.Count - 1))
+                last2 = true;
+            else
+                last2 = false;
+		    String uu = APT.SetUUID_if_not_set(tp_id);
+            decode_tp(Find, builder, tp_id, depth + 1, last2, ref count);
+	    }
+
         if (last)
         {
-            builder.Append(" }}\n");
+            builder.Append(" ]}}\n");
             count = count + 1;
         }
         else
-            builder.Append(" }},\n");
+            builder.Append(" ]}},\n");
+     }
 
-        List<long> paths = Find.GetWorkingstepPathAll(ws_id);
+    static void decode_tp(STEPNCLib.Finder Find, StringBuilder builder, long tp_id, int depth, bool last2, ref long count) {
+            //time, distance, speed, feed
+            double time = Find.GetExecutableBaseTime(tp_id);
+            double distance = Find.GetExecutableDistance(tp_id);
+            double feed = Find.GetProcessFeed(tp_id);
+            double speed = Find.GetProcessSpeed(tp_id);
 
-	    foreach (long tp_id in paths){
-		    String uu = APT.SetUUID_if_not_set(tp_id);
-            //String body = Find.GetWorkingstepName2(tp_id);
-		    //System.Console.WriteLine("Path at " + tp_id + " has UUID: " + uu);
-            //decode_tp(Find, builder, tp_id);
-	    }
-	}
+            for (int i = 0; i < depth; i++)
+                builder.Append("\t");
+            builder.Append("{\"toolpath\": {");
 
-    /*static void decode_tp(STEPNCLib.Finder Find, StringBuilder builder, long tp_id) {
-        long count1 = Find.GetPathCurveCount(tp_id);
-        long count2 = Find.GetPathAxisCount(tp_id);
+            builder.Append("\"base_time\": ");
+            builder.Append(time);
+            builder.Append(", ");
 
-        if(count2 != 0 && count1 != count2) {
-            System.Console.WriteLine("Error: Bad parameterization");
-            return;
+            builder.Append("\"distance\": ");
+            builder.Append(distance);
+            builder.Append(", ");
+
+            builder.Append("\"feed_rate\": ");
+            builder.Append(feed);
+            builder.Append(", ");
+
+            builder.Append("\"speed\": ");
+            builder.Append(speed);
+
+            if (last2)
+            {
+                builder.Append(" }}\n");
+                count = count + 1;
+            }
+            else
+                builder.Append(" }},\n");
+
         }
 
-        decode_geom(Find, builder, count1, tp_id);
-
-        if(count2 != 0) decode_axis(Find, builder, count2, tp_id);
-
-        decode_proc(Find, builder, tp_id);
-
-        //System.Console.WriteLine("Path Curve Count: " + count1 + "Path Axis Count: " + count2);
-
-    }
-
-    static void decode_geom(STEPNCLib.Finder Find, StringBuilder builder, long crv_count, long tp_id) {
+    /*static void decode_geom(STEPNCLib.Finder Find, StringBuilder builder, long crv_count, long tp_id) {
         for(int i = 0; i < crv_count; i++) {
             bool isArc;
             long crv_id = Find.GetPathCurveNext(tp_id, i, out isArc);

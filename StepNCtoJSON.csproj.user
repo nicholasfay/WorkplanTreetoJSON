@@ -2,7 +2,7 @@
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <StartWorkingDirectory>C:\Users\Nick\Documents\GitHub\WorkplanTreetoJSON</StartWorkingDirectory>
-    <StartArguments>C:\test\test3.txt</StartArguments>
+    <StartArguments>C:\test\test3.txt "v14_IMTS_HARDMOLDY.stpnc"</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <StartWorkingDirectory>C:\Users\Nick\Documents\Visual Studio 2015\Projects\Cylinder_to_Csharp\stepnc_hello_cs</StartWorkingDirectory>
